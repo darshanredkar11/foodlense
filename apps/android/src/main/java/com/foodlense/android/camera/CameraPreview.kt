@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -25,9 +26,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 @Composable
-fun CameraPreview(modifier: Modifier = Modifier) {
+fun CameraPreview(
+    modifier: Modifier = Modifier,
+    analyzer: ImageAnalysis.Analyzer? = null,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var granted by remember {
@@ -40,7 +46,7 @@ fun CameraPreview(modifier: Modifier = Modifier) {
         ActivityResultContracts.RequestPermission(),
     ) { granted = it }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(granted) {
         if (!granted) launcher.launch(Manifest.permission.CAMERA)
     }
 
@@ -55,20 +61,41 @@ fun CameraPreview(modifier: Modifier = Modifier) {
 
     val previewView = remember { PreviewView(context) }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val analysisExecutor: ExecutorService = remember { Executors.newSingleThreadExecutor() }
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, analyzer) {
         val executor = ContextCompat.getMainExecutor(context)
         val listener = Runnable {
+            if (!cameraProviderFuture.isDone) return@Runnable
+
             val cameraProvider = cameraProviderFuture.get()
             val preview = Preview.Builder().build().also {
                 it.surfaceProvider = previewView.surfaceProvider
             }
+
+            val imageAnalysis = analyzer?.let {
+                ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+                    .build()
+                    .also { analysis -> analysis.setAnalyzer(analysisExecutor, it) }
+            }
+
             cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
-                lifecycleOwner,
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                preview,
-            )
+            if (imageAnalysis == null) {
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    preview,
+                )
+            } else {
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    preview,
+                    imageAnalysis,
+                )
+            }
         }
         cameraProviderFuture.addListener(listener, executor)
 
@@ -77,6 +104,10 @@ fun CameraPreview(modifier: Modifier = Modifier) {
                 cameraProviderFuture.get().unbindAll()
             }
         }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { analysisExecutor.shutdown() }
     }
 
     AndroidView(
