@@ -1,8 +1,5 @@
 package com.foodlense.shared.domain.scan
 
-import com.foodlense.shared.contracts.scan.BarcodeScanner
-import com.foodlense.shared.contracts.scan.ScanFrame
-import com.foodlense.shared.contracts.scan.TextScanner
 import java.time.Clock
 import java.util.UUID
 
