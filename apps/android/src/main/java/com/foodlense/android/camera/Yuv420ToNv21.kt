@@ -3,7 +3,7 @@ package com.foodlense.android.camera
 import androidx.camera.core.ImageProxy
 import java.nio.ByteBuffer
 
-/** Converts CameraX YUV_420_888 frames into the NV21 layout expected by ML Kit. */
+/** Converts a CameraX YUV_420_888 crop into the NV21 layout expected by ML Kit. */
 internal object Yuv420ToNv21 {
     fun convert(image: ImageProxy): ByteArray {
         require(image.format == android.graphics.ImageFormat.YUV_420_888) {
@@ -12,15 +12,20 @@ internal object Yuv420ToNv21 {
 
         val width = image.width
         val height = image.height
-        val output = ByteArray(width * height * 3 / 2)
-        var outputOffset = 0
+        require(width > 0 && height > 0 && width % 2 == 0 && height % 2 == 0) {
+            "YUV frame must have positive even dimensions: ${width}x$height"
+        }
 
-        outputOffset = copyPlane(
+        val crop = image.cropRect
+        val output = ByteArray(width * height * 3 / 2)
+        var outputOffset = copyPlane(
             plane = image.planes[0],
+            startX = crop.left,
+            startY = crop.top,
             width = width,
             height = height,
             output = output,
-            outputOffset = outputOffset,
+            outputOffset = 0,
         )
 
         val uPlane = image.planes[1]
@@ -29,13 +34,16 @@ internal object Yuv420ToNv21 {
         val vBuffer = vPlane.buffer.duplicate()
         val chromaWidth = width / 2
         val chromaHeight = height / 2
+        val chromaStartX = crop.left / 2
+        val chromaStartY = crop.top / 2
 
         for (row in 0 until chromaHeight) {
-            val uRowStart = row * uPlane.rowStride
-            val vRowStart = row * vPlane.rowStride
+            val uRowStart = (chromaStartY + row) * uPlane.rowStride
+            val vRowStart = (chromaStartY + row) * vPlane.rowStride
             for (column in 0 until chromaWidth) {
-                val uIndex = uRowStart + column * uPlane.pixelStride
-                val vIndex = vRowStart + column * vPlane.pixelStride
+                val chromaColumn = chromaStartX + column
+                val uIndex = uRowStart + chromaColumn * uPlane.pixelStride
+                val vIndex = vRowStart + chromaColumn * vPlane.pixelStride
                 output[outputOffset++] = vBuffer.get(vIndex)
                 output[outputOffset++] = uBuffer.get(uIndex)
             }
@@ -46,6 +54,8 @@ internal object Yuv420ToNv21 {
 
     private fun copyPlane(
         plane: ImageProxy.PlaneProxy,
+        startX: Int,
+        startY: Int,
         width: Int,
         height: Int,
         output: ByteArray,
@@ -54,9 +64,9 @@ internal object Yuv420ToNv21 {
         val buffer: ByteBuffer = plane.buffer.duplicate()
         var offset = outputOffset
         for (row in 0 until height) {
-            val rowStart = row * plane.rowStride
+            val rowStart = (startY + row) * plane.rowStride
             for (column in 0 until width) {
-                output[offset++] = buffer.get(rowStart + column * plane.pixelStride)
+                output[offset++] = buffer.get(rowStart + (startX + column) * plane.pixelStride)
             }
         }
         return offset
