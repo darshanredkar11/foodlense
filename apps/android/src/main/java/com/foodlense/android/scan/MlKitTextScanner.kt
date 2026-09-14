@@ -1,5 +1,6 @@
 package com.foodlense.android.scan
 
+import com.foodlense.shared.contracts.scan.ImageFormat
 import com.foodlense.shared.contracts.scan.ScanFrame
 import com.foodlense.shared.contracts.scan.TextDetection
 import com.foodlense.shared.contracts.scan.TextScanner
@@ -9,11 +10,13 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-/** OCR fallback adapter. Barcode remains the coordinator's preferred path. */
+/** Android adapter around ML Kit Latin text recognition. */
 class MlKitTextScanner : TextScanner {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     override suspend fun recognize(frame: ScanFrame): TextDetection? {
+        if (frame.format != ImageFormat.YUV_420_888 || frame.bytes.isEmpty()) return null
+
         val image = InputImage.fromByteArray(
             frame.bytes,
             frame.width,
@@ -25,9 +28,13 @@ class MlKitTextScanner : TextScanner {
         return suspendCancellableCoroutine { continuation ->
             recognizer.process(image)
                 .addOnSuccessListener { result ->
-                    continuation.resume(result.text.takeIf { it.isNotBlank() }?.let(::TextDetection))
+                    if (!continuation.isActive) return@addOnSuccessListener
+                    val text = result.text.trim()
+                    continuation.resume(text.takeIf { it.isNotEmpty() }?.let(::TextDetection))
                 }
-                .addOnFailureListener { continuation.resume(null) }
+                .addOnFailureListener {
+                    if (continuation.isActive) continuation.resume(null)
+                }
         }
     }
 }
