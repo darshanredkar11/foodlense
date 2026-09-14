@@ -31,11 +31,30 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build and test
-        run: gradle build --stacktrace
+      - name: Clean, build and test
+        run: gradle clean build --no-build-cache --stacktrace
 
-      - name: Assemble debug APK
-        run: gradle :apps:android:assembleDebug --stacktrace
+      - name: Assemble clean debug APK
+        run: gradle clean :apps:android:assembleDebug --no-build-cache --stacktrace
+
+      - name: Verify APK matches current demo UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find apps/android/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$apk"
+          found_new=0
+          found_old=0
+          while IFS= read -r dex; do
+            data="$(unzip -p "$apk" "$dex")"
+            if printf '%s' "$data" | strings | grep -Fq "Know what's"; then found_new=1; fi
+            if printf '%s' "$data" | strings | grep -Fq "Ready to scan"; then found_old=1; fi
+          done < <(unzip -Z1 "$apk" | grep -E '^classes[0-9]*\\.dex$')
+          if [ "$found_new" -ne 1 ] || [ "$found_old" -ne 0 ]; then
+            echo "APK UI verification failed: APK does not match the current FoodLense demo UI."
+            exit 1
+          fi
+          echo "APK UI verification passed: current demo UI is packaged."
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
