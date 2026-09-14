@@ -44,6 +44,7 @@ dependencies {
 
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
 
     testImplementation(kotlin("test"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.01.01"))
