@@ -43,16 +43,26 @@ jobs:
           set -euo pipefail
           apk="$(find apps/android/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$apk"
-          found_new=0
-          found_old=0
-          while IFS= read -r dex; do
-            if unzip -p "$apk" "$dex" | grep -aFq "Know what's"; then found_new=1; fi
-            if unzip -p "$apk" "$dex" | grep -aFq "Ready to scan"; then found_old=1; fi
-          done < <(unzip -Z1 "$apk" | grep -E '^classes[0-9]*\.dex$')
-          if [ "$found_new" -ne 1 ] || [ "$found_old" -ne 0 ]; then
-            echo "APK UI verification failed: APK does not match the current FoodLense demo UI."
+
+          dex_dir="$(mktemp -d)"
+          apk_text="$(mktemp)"
+          trap 'rm -rf "$dex_dir" "$apk_text"' EXIT
+
+          unzip -q "$apk" 'classes*.dex' -d "$dex_dir"
+          : > "$apk_text"
+          find "$dex_dir" -name 'classes*.dex' -print0 | while IFS= read -r -d '' dex; do
+            strings "$dex" >> "$apk_text"
+          done
+
+          if ! grep -Fq "Know what's" "$apk_text"; then
+            echo "APK UI verification failed: current demo UI marker was not found."
             exit 1
           fi
+          if grep -Fq "Ready to scan" "$apk_text"; then
+            echo "APK UI verification failed: stale UI marker is still packaged."
+            exit 1
+          fi
+
           echo "APK UI verification passed: current demo UI is packaged."
 
       - name: Upload debug APK
