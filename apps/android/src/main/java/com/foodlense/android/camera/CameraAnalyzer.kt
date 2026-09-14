@@ -9,6 +9,7 @@ import com.foodlense.shared.contracts.scan.TextScanner
 import com.foodlense.shared.domain.scan.ScanCoordinator
 import com.foodlense.shared.domain.scan.ScanResult
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,8 +28,10 @@ class CameraAnalyzer(
     private val barcodeScanner: BarcodeScanner,
     private val textScanner: TextScanner,
     private val onResult: (ScanResult) -> Unit,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val frameConverter: (ImageProxy) -> ScanFrame = { it.toScanFrame() },
 ) : ImageAnalysis.Analyzer, AutoCloseable {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val processing = AtomicBoolean(false)
     private val delivered = AtomicBoolean(false)
     private val coordinator = ScanCoordinator(barcodeScanner, textScanner)
@@ -40,7 +43,7 @@ class CameraAnalyzer(
         }
 
         val frame = try {
-            image.toScanFrame()
+            frameConverter(image)
         } catch (_: RuntimeException) {
             null
         } finally {
@@ -72,10 +75,13 @@ class CameraAnalyzer(
     }
 }
 
-private fun ImageProxy.toScanFrame(): ScanFrame = ScanFrame(
-    bytes = Yuv420ToNv21.convert(this),
-    width = width,
-    height = height,
-    rotationDegrees = imageInfo.rotationDegrees,
-    format = ImageFormat.YUV_420_888,
-)
+private fun ImageProxy.toScanFrame(): ScanFrame {
+    val crop = cropRect
+    return ScanFrame(
+        bytes = Yuv420ToNv21.convert(this),
+        width = crop.width(),
+        height = crop.height(),
+        rotationDegrees = imageInfo.rotationDegrees,
+        format = ImageFormat.YUV_420_888,
+    )
+}
