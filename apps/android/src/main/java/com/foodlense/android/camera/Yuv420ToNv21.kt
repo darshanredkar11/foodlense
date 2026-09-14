@@ -16,6 +16,9 @@ internal object Yuv420ToNv21 {
         require(width > 0 && height > 0 && width % 2 == 0 && height % 2 == 0) {
             "YUV crop must have positive even dimensions: ${width}x$height"
         }
+        require(crop.left % 2 == 0 && crop.top % 2 == 0) {
+            "YUV crop origin must be even for 4:2:0 chroma: left=${crop.left}, top=${crop.top}"
+        }
         require(crop.left >= 0 && crop.top >= 0 && crop.right <= image.width && crop.bottom <= image.height) {
             "YUV crop is outside the image bounds: $crop for ${image.width}x${image.height}"
         }
