@@ -64,11 +64,14 @@ fun CameraPreview(
     val analysisExecutor: ExecutorService = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(lifecycleOwner, analyzer) {
+        var active = true
         val executor = ContextCompat.getMainExecutor(context)
         val listener = Runnable {
-            if (!cameraProviderFuture.isDone) return@Runnable
+            if (!active || !cameraProviderFuture.isDone) return@Runnable
 
             val cameraProvider = cameraProviderFuture.get()
+            if (!active) return@Runnable
+
             val preview = Preview.Builder().build().also {
                 it.surfaceProvider = previewView.surfaceProvider
             }
@@ -82,6 +85,8 @@ fun CameraPreview(
             }
 
             cameraProvider.unbindAll()
+            if (!active) return@Runnable
+
             if (imageAnalysis == null) {
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
@@ -100,6 +105,7 @@ fun CameraPreview(
         cameraProviderFuture.addListener(listener, executor)
 
         onDispose {
+            active = false
             if (cameraProviderFuture.isDone) {
                 cameraProviderFuture.get().unbindAll()
             }
