@@ -33,3 +33,13 @@ jobs:
 
       - name: Build and test
         run: gradle build --stacktrace
+
+      - name: Assemble debug APK
+        run: gradle :apps:android:assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: foodlense-debug-apk
+          path: apps/android/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
