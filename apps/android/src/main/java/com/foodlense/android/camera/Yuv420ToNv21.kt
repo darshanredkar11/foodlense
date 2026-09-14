@@ -10,13 +10,17 @@ internal object Yuv420ToNv21 {
             "Expected YUV_420_888, got ${image.format}"
         }
 
-        val width = image.width
-        val height = image.height
-        require(width > 0 && height > 0 && width % 2 == 0 && height % 2 == 0) {
-            "YUV frame must have positive even dimensions: ${width}x$height"
-        }
-
         val crop = image.cropRect
+        val width = crop.width()
+        val height = crop.height()
+        require(width > 0 && height > 0 && width % 2 == 0 && height % 2 == 0) {
+            "YUV crop must have positive even dimensions: ${width}x$height"
+        }
+        require(crop.left >= 0 && crop.top >= 0 && crop.right <= image.width && crop.bottom <= image.height) {
+            "YUV crop is outside the image bounds: $crop for ${image.width}x${image.height}"
+        }
+        require(image.planes.size >= 3) { "YUV_420_888 must contain three planes" }
+
         val output = ByteArray(width * height * 3 / 2)
         var outputOffset = copyPlane(
             plane = image.planes[0],
@@ -44,6 +48,9 @@ internal object Yuv420ToNv21 {
                 val chromaColumn = chromaStartX + column
                 val uIndex = uRowStart + chromaColumn * uPlane.pixelStride
                 val vIndex = vRowStart + chromaColumn * vPlane.pixelStride
+                require(uIndex in 0 until uBuffer.limit() && vIndex in 0 until vBuffer.limit()) {
+                    "YUV chroma plane does not contain the requested crop"
+                }
                 output[outputOffset++] = vBuffer.get(vIndex)
                 output[outputOffset++] = uBuffer.get(uIndex)
             }
@@ -66,7 +73,11 @@ internal object Yuv420ToNv21 {
         for (row in 0 until height) {
             val rowStart = (startY + row) * plane.rowStride
             for (column in 0 until width) {
-                output[offset++] = buffer.get(rowStart + (startX + column) * plane.pixelStride)
+                val index = rowStart + (startX + column) * plane.pixelStride
+                require(index in 0 until buffer.limit()) {
+                    "YUV luma plane does not contain the requested crop"
+                }
+                output[offset++] = buffer.get(index)
             }
         }
         return offset
