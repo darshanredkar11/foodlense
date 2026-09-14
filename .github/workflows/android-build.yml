@@ -46,10 +46,9 @@ jobs:
           found_new=0
           found_old=0
           while IFS= read -r dex; do
-            data="$(unzip -p "$apk" "$dex")"
-            if printf '%s' "$data" | strings | grep -Fq "Know what's"; then found_new=1; fi
-            if printf '%s' "$data" | strings | grep -Fq "Ready to scan"; then found_old=1; fi
-          done < <(unzip -Z1 "$apk" | grep -E '^classes[0-9]*\\.dex$')
+            if unzip -p "$apk" "$dex" | grep -aFq "Know what's"; then found_new=1; fi
+            if unzip -p "$apk" "$dex" | grep -aFq "Ready to scan"; then found_old=1; fi
+          done < <(unzip -Z1 "$apk" | grep -E '^classes[0-9]*\.dex$')
           if [ "$found_new" -ne 1 ] || [ "$found_old" -ne 0 ]; then
             echo "APK UI verification failed: APK does not match the current FoodLense demo UI."
             exit 1
