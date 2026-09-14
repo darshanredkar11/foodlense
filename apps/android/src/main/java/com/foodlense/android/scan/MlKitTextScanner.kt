@@ -11,7 +11,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 /** Android adapter around ML Kit Latin text recognition. */
-class MlKitTextScanner : TextScanner {
+class MlKitTextScanner : TextScanner, AutoCloseable {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     override suspend fun recognize(frame: ScanFrame): TextDetection? {
@@ -36,5 +36,9 @@ class MlKitTextScanner : TextScanner {
                     if (continuation.isActive) continuation.resume(null)
                 }
         }
+    }
+
+    override fun close() {
+        recognizer.close()
     }
 }
