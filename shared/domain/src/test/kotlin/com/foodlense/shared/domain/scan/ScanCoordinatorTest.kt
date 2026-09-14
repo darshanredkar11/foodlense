@@ -15,27 +15,37 @@ class ScanCoordinatorTest {
     @Test
     fun `barcode result wins over OCR`() = runTest {
         val coordinator = ScanCoordinator(
-            barcodeScanner = BarcodeScanner { BarcodeDetection("8901234567890", BarcodeFormat.EAN_13) },
-            textScanner = TextScanner { TextDetection("ignored") },
+            barcodeScanner = object : BarcodeScanner {
+                override suspend fun scan(frame: ScanFrame) =
+                    BarcodeDetection("8901234567890", BarcodeFormat.EAN_13)
+            },
+            textScanner = object : TextScanner {
+                override suspend fun recognize(frame: ScanFrame) = TextDetection("ignored")
+            },
             clock = clock,
             idFactory = { "scan-1" },
         )
 
-        val result = coordinator.scan(frame)
+        val result = checkNotNull(coordinator.scan(frame))
 
-        assertEquals(ScanSource.BARCODE, result?.source)
-        assertEquals("8901234567890", (result?.payload as ScanPayload.Barcode).rawValue)
-        assertEquals(BarcodeFormat.EAN_13, (result?.payload as ScanPayload.Barcode).format)
-        assertNull(result?.confidence)
-        assertEquals("scan-1", result?.id)
-        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), result?.capturedAt)
+        assertEquals(ScanSource.BARCODE, result.source)
+        assertEquals("8901234567890", (result.payload as ScanPayload.Barcode).rawValue)
+        assertEquals(BarcodeFormat.EAN_13, (result.payload as ScanPayload.Barcode).format)
+        assertNull(result.confidence)
+        assertEquals("scan-1", result.id)
+        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), result.capturedAt)
     }
 
     @Test
     fun `barcode confidence is propagated`() = runTest {
         val coordinator = ScanCoordinator(
-            barcodeScanner = BarcodeScanner { BarcodeDetection("12345678", BarcodeFormat.EAN_8, 0.92f) },
-            textScanner = TextScanner { TextDetection("ignored") },
+            barcodeScanner = object : BarcodeScanner {
+                override suspend fun scan(frame: ScanFrame) =
+                    BarcodeDetection("12345678", BarcodeFormat.EAN_8, 0.92f)
+            },
+            textScanner = object : TextScanner {
+                override suspend fun recognize(frame: ScanFrame) = TextDetection("ignored")
+            },
             clock = clock,
         )
 
@@ -45,24 +55,32 @@ class ScanCoordinatorTest {
     @Test
     fun `OCR is used when barcode is absent`() = runTest {
         val coordinator = ScanCoordinator(
-            barcodeScanner = BarcodeScanner { null },
-            textScanner = TextScanner { TextDetection("Nutrition Facts", 0.81f) },
+            barcodeScanner = object : BarcodeScanner {
+                override suspend fun scan(frame: ScanFrame) = null
+            },
+            textScanner = object : TextScanner {
+                override suspend fun recognize(frame: ScanFrame) = TextDetection("Nutrition Facts", 0.81f)
+            },
             clock = clock,
             idFactory = { "scan-2" },
         )
 
-        val result = coordinator.scan(frame)
+        val result = checkNotNull(coordinator.scan(frame))
 
-        assertEquals(ScanSource.OCR, result?.source)
-        assertEquals("Nutrition Facts", (result?.payload as ScanPayload.Text).value)
-        assertEquals(0.81f, result?.confidence)
+        assertEquals(ScanSource.OCR, result.source)
+        assertEquals("Nutrition Facts", (result.payload as ScanPayload.Text).value)
+        assertEquals(0.81f, result.confidence)
     }
 
     @Test
     fun `blank OCR is ignored`() = runTest {
         val coordinator = ScanCoordinator(
-            barcodeScanner = BarcodeScanner { null },
-            textScanner = TextScanner { TextDetection("   ") },
+            barcodeScanner = object : BarcodeScanner {
+                override suspend fun scan(frame: ScanFrame) = null
+            },
+            textScanner = object : TextScanner {
+                override suspend fun recognize(frame: ScanFrame) = TextDetection("   ")
+            },
             clock = clock,
         )
 
@@ -72,8 +90,12 @@ class ScanCoordinatorTest {
     @Test
     fun `OCR whitespace around text is retained as returned by scanner`() = runTest {
         val coordinator = ScanCoordinator(
-            barcodeScanner = BarcodeScanner { null },
-            textScanner = TextScanner { TextDetection("  Milk  ") },
+            barcodeScanner = object : BarcodeScanner {
+                override suspend fun scan(frame: ScanFrame) = null
+            },
+            textScanner = object : TextScanner {
+                override suspend fun recognize(frame: ScanFrame) = TextDetection("  Milk  ")
+            },
             clock = clock,
         )
 
@@ -84,10 +106,15 @@ class ScanCoordinatorTest {
     fun `barcode scanner is not followed by OCR when barcode succeeds`() = runTest {
         var ocrCalls = 0
         val coordinator = ScanCoordinator(
-            barcodeScanner = BarcodeScanner { BarcodeDetection("8901234567890", BarcodeFormat.EAN_13) },
-            textScanner = TextScanner {
-                ocrCalls++
-                TextDetection("must not run")
+            barcodeScanner = object : BarcodeScanner {
+                override suspend fun scan(frame: ScanFrame) =
+                    BarcodeDetection("8901234567890", BarcodeFormat.EAN_13)
+            },
+            textScanner = object : TextScanner {
+                override suspend fun recognize(frame: ScanFrame): TextDetection {
+                    ocrCalls++
+                    return TextDetection("must not run")
+                }
             },
         )
 
