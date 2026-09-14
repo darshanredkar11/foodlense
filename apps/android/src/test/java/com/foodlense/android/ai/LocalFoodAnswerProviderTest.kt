@@ -31,8 +31,13 @@ class LocalFoodAnswerProviderTest {
     @Test
     fun unknownQuestionStaysGroundedInScannedText() = runBlocking {
         val answer = provider.answer("Sugar, palm oil", "Tell me something interesting")
-        assertContains(answer, "added sugars")
         assertContains(answer, "palm / palmolein oil")
+    }
+
+    @Test
+    fun sugarQuestionRecognizesSugarFromScannedText() = runBlocking {
+        val answer = provider.answer("Sugar, palm oil", "Does this contain sugar?")
+        assertContains(answer, "Sugar appears in the ingredient list")
     }
 
     @Test
