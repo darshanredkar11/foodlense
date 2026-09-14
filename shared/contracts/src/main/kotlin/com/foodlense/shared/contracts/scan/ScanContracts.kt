@@ -1,42 +1,14 @@
 package com.foodlense.shared.contracts.scan
 
-import com.foodlense.shared.domain.scan.BarcodeFormat
-import com.foodlense.shared.domain.scan.ScanPayload
-
-/** Scanner capabilities implemented by each platform. */
-interface BarcodeScanner {
-    suspend fun scan(frame: ScanFrame): BarcodeDetection?
-}
-
-interface TextScanner {
-    suspend fun recognize(frame: ScanFrame): TextDetection?
-}
-
-data class ScanFrame(
-    val bytes: ByteArray,
-    val width: Int,
-    val height: Int,
-    val rotationDegrees: Int,
-    val format: ImageFormat,
-)
-
-enum class ImageFormat {
-    JPEG,
-    YUV_420_888,
-    RGBA_8888,
-}
-
-data class BarcodeDetection(
-    val rawValue: String,
-    val format: BarcodeFormat,
-    val confidence: Float? = null,
-) {
-    fun asPayload(): ScanPayload.Barcode = ScanPayload.Barcode(rawValue, format)
-}
-
-data class TextDetection(
-    val text: String,
-    val confidence: Float? = null,
-) {
-    fun asPayload(): ScanPayload.Text = ScanPayload.Text(text)
-}
+/**
+ * Public cross-client scan capability contracts.
+ *
+ * The domain module owns the actual scan primitives; this package exposes them
+ * to platform clients without creating a dependency cycle back into contracts.
+ */
+typealias BarcodeScanner = com.foodlense.shared.domain.scan.BarcodeScanner
+typealias TextScanner = com.foodlense.shared.domain.scan.TextScanner
+typealias ScanFrame = com.foodlense.shared.domain.scan.ScanFrame
+typealias ImageFormat = com.foodlense.shared.domain.scan.ImageFormat
+typealias BarcodeDetection = com.foodlense.shared.domain.scan.BarcodeDetection
+typealias TextDetection = com.foodlense.shared.domain.scan.TextDetection
