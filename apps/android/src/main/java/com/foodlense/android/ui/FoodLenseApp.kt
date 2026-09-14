@@ -1,12 +1,14 @@
 package com.foodlense.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -147,7 +149,20 @@ private fun IngredientCamera(onResult: (ScanResult) -> Unit, onClose: () -> Unit
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         CameraPreview(analyzer = analyzer)
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+
+        // A framing guide is intentionally persistent: users should know exactly
+        // where to place the ingredients panel before OCR is allowed to win.
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.fillMaxWidth(.86f).fillMaxHeight(.46f)
+                    .border(2.dp, Color.White.copy(alpha = .9f), RoundedCornerShape(24.dp)),
+            )
+        }
+
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = CircleShape, color = Color.Black.copy(alpha = .48f)) {
                     IconButton(onClick = onClose) { Text("×", color = Color.White, style = MaterialTheme.typography.headlineMedium) }
@@ -158,15 +173,15 @@ private fun IngredientCamera(onResult: (ScanResult) -> Unit, onClose: () -> Unit
                 }
             }
             Spacer(Modifier.height(28.dp))
-            Surface(shape = RoundedCornerShape(20.dp), color = Color.Black.copy(alpha = .52f)) {
+            Surface(shape = RoundedCornerShape(20.dp), color = Color.Black.copy(alpha = .58f)) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 13.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Find the ingredients list", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Keep the ingredients inside the frame", color = Color.White, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(3.dp))
-                    Text("Hold steady for a moment", color = Color.White.copy(alpha = .82f), style = MaterialTheme.typography.bodySmall)
+                    Text("Move closer • straighten the label • hold steady", color = Color.White.copy(alpha = .84f), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
                 }
             }
             Spacer(Modifier.weight(1f))
-            Text("Reading the label…", color = Color.White, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text("Waiting for a clear, stable read…", color = Color.White, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(10.dp))
             LinearProgressIndicator(modifier = Modifier.width(150.dp).clip(CircleShape), color = Color.White, trackColor = Color.White.copy(alpha = .25f))
             Spacer(Modifier.height(18.dp))
@@ -174,7 +189,7 @@ private fun IngredientCamera(onResult: (ScanResult) -> Unit, onClose: () -> Unit
                 Box(Modifier.size(68.dp).clip(CircleShape).background(Color.Black.copy(alpha = .08f)))
             }
             Spacer(Modifier.height(8.dp))
-            Text("Auto-detect is on", color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.labelSmall)
+            Text("I'll wait for 3 consistent reads", color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -262,7 +277,7 @@ private fun IngredientCard(analysis: IngredientAnalysis) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(analysis.verdict, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Based on what I could read", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(if (analysis.isPartial) "Only a partial label read" else "Based on a stable label read", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(Modifier.height(13.dp))
@@ -298,7 +313,14 @@ private fun ChatBubble(message: ChatMessage) {
 }
 
 private data class Flag(val title: String, val detail: String, val background: Color)
-private data class IngredientAnalysis(val verdict: String, val summary: String, val opening: String, val ingredients: String, val flags: List<Flag>)
+private data class IngredientAnalysis(
+    val verdict: String,
+    val summary: String,
+    val opening: String,
+    val ingredients: String,
+    val flags: List<Flag>,
+    val isPartial: Boolean,
+)
 
 private fun extractText(result: ScanResult?): String = when (val payload = result?.payload) {
     is ScanPayload.Text -> payload.value
@@ -312,12 +334,32 @@ private fun analyzeIngredients(text: String): IngredientAnalysis {
     if (listOf("e621", "monosodium glutamate", "msg").any(normalized::contains)) flags += Flag("E621 · MSG", "Generally considered safe at normal dietary levels. If you eat this often, the bigger question is the overall food and sodium load.", Color(0xFFFFF1D6))
     if (listOf("palmolein", "palm oil", "hydrogenated", "partially hydrogenated").any(normalized::contains)) flags += Flag("Palm / hydrogenated fat", "Worth knowing rather than panicking about. Frequency and the rest of your diet matter more than one ingredient alone.", Color(0xFFFFE4E1))
     if (listOf("aspartame", "sucralose", "acesulfame", "e951", "e955", "e950").any(normalized::contains)) flags += Flag("Sweeteners detected", "These are regulated food additives, but people can have different preferences or sensitivities. I wouldn't call them automatically harmful.", Color(0xFFE9F4FF))
-    if (flags.isEmpty()) flags += Flag("No obvious red flags", "I didn't spot a common additive that I'd immediately call a concern from the text I could read. That isn't the same as saying the whole product is healthy.", Color(0xFFE8F6EA))
+
+    val partial = text.trim().length < 20 && !listOf("ingredients", "contains").any(normalized::contains)
+    if (flags.isEmpty()) {
+        flags += if (partial) {
+            Flag("Not enough label detail yet", "I could read only a short piece of the label, so I won't tell you the product is fine. Scan the full ingredients panel for a meaningful check.", Color(0xFFFFF1D6))
+        } else {
+            Flag("No obvious red flags in this read", "I didn't spot a common additive that I'd immediately call a concern from the text I could read. That still isn't the same as saying the whole product is healthy.", Color(0xFFE8F6EA))
+        }
+    }
     val verdict = when {
+        partial -> "I need a clearer read 📸"
         flags.any { it.title.startsWith("E621") } -> "A few things worth knowing 👀"
         flags.any { it.title.startsWith("Palm") } -> "Worth a closer look 🧐"
         else -> "Looks fairly straightforward 🙂"
     }
-    val summary = "I read the label and found ${flags.size} thing${if (flags.size == 1) "" else "s"} worth talking about."
-    return IngredientAnalysis(verdict, summary, "$verdict\n\n$summary Ask me about any ingredient and I'll break it down without the chemistry lecture.", text.ifBlank { "No readable ingredient text yet." }, flags)
+    val summary = if (partial) {
+        "I got a partial label read, so I'm not going to pretend I can judge the food yet."
+    } else {
+        "I read a stable label and found ${flags.size} thing${if (flags.size == 1) "" else "s"} worth talking about."
+    }
+    return IngredientAnalysis(
+        verdict = verdict,
+        summary = summary,
+        opening = "$verdict\n\n$summary Ask me about any ingredient and I'll break it down without the chemistry lecture.",
+        ingredients = text.ifBlank { "No readable ingredient text yet." },
+        flags = flags,
+        isPartial = partial,
+    )
 }
