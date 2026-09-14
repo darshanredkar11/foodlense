@@ -1,44 +1,40 @@
 package com.foodlense.android.ai
 
-/**
- * Zero-cost on-device answer engine used until an external AI provider is configured.
- * It deliberately avoids claiming medical certainty and keeps the answer grounded in
- * the ingredient text the scanner actually observed.
- */
-class LocalFoodAnswerProvider : FoodAnswerProvider {
+/** Offline answer engine. It uses structured ingredient knowledge but never equates a match with "harmful". */
+class LocalFoodAnswerProvider(
+    private val knowledge: IngredientKnowledgeBase = IngredientKnowledgeBase(),
+) : FoodAnswerProvider {
     override suspend fun answer(ingredients: String, question: String): String {
         val q = question.trim().lowercase()
-        val normalized = ingredients.lowercase()
-        val flags = detectedFlags(normalized)
-        val firstFlag = flags.firstOrNull() ?: "the ingredients I could read"
+        val insights = knowledge.inspect(ingredients)
+        val first = insights.firstOrNull()
 
         return when {
             q.isBlank() -> "Tell me what you're wondering about and I'll break it down from the label."
-            "msg" in q || "e621" in q ->
-                "E621 (MSG) is generally considered safe at normal dietary levels. The more useful question is the overall food — especially sodium and how often you eat it."
-            "daily" in q || "every day" in q || "often" in q ->
+            q.contains("msg") || q.contains("e621") -> {
+                val msg = insights.firstOrNull { it.key == "e621" }
+                msg?.let { "${it.name} is a flavour enhancer and is generally considered safe at normal dietary levels. The more useful question is the overall food — especially sodium and how often you eat it." }
+                    ?: "I don't see E621/MSG in the label text I could read. If the print is tiny, try scanning that section again."
+            }
+            q.contains("daily") || q.contains("every day") || q.contains("often") ->
                 "If this is an everyday food, I'd zoom out from one additive and look at sugar, sodium, saturated fat, protein and fibre too. Frequency changes the picture."
-            "sugar" in q ->
-                if ("sugar" in normalized) {
-                    "Sugar is on the label I could read. If you send me the nutrition panel too, I can help put the amount into context rather than judging the ingredient alone."
-                } else {
-                    "I don't see the word sugar in the ingredient text I received. The nutrition panel would give us a more reliable answer."
-                }
-            "salt" in q || "sodium" in q ->
+            q.contains("sugar") ->
+                if (insights.any { it.key == "sugar" }) "Sugar appears in the ingredient list. The ingredient list tells us presence, not quantity — the nutrition panel is needed to judge how much you're getting." else "I don't see sugar in the ingredient text I received. The nutrition panel would give us a more reliable answer."
+            q.contains("salt") || q.contains("sodium") ->
                 "Sodium is better judged from the nutrition panel than the ingredient list. If you scan that panel too, I can put the number into everyday context."
-            "bad" in q || "harm" in q || "safe" in q || "healthy" in q ->
-                "I wouldn't label the whole product as harmful or healthy from this ingredient list alone. $firstFlag is something to understand, not automatically fear. The full nutrition panel and how often you eat it matter too."
-            "ingredient" in q || "what is" in q || "what's" in q ->
+            q.contains("bad") || q.contains("harm") || q.contains("safe") || q.contains("healthy") ->
+                if (first != null) "I wouldn't call the whole product harmful from this label alone. ${first.name} is ${riskPhrase(first.risk)}. The full nutrition panel and how often you eat it matter too." else "I can't make a reliable health judgement from the text I could read yet. The nutrition panel plus the complete ingredient list would give us much more context."
+            q.contains("ingredient") || q.contains("what is") || q.contains("what's") ->
                 "I can explain individual ingredients one by one. Pick the name that caught your eye and I'll translate the food-science language into plain English."
             else ->
-                "Good question. From the label I could read, $firstFlag stands out. I can go deeper if you tell me what you're most curious about — safety, nutrition, additives, or whether it makes sense as an everyday food."
+                if (first != null) "Good question. From the label I could read, ${first.name} stands out. It's ${first.category.lowercase()}; ${first.explanation.lowercase()}" else "Good question. I don't have enough recognized ingredients from this scan yet. Try holding the camera closer to the ingredients list."
         }
     }
 
-    private fun detectedFlags(text: String): List<String> = buildList {
-        if (listOf("e621", "monosodium glutamate", "msg").any(text::contains)) add("E621 · MSG")
-        if (listOf("palmolein", "palm oil", "hydrogenated", "partially hydrogenated").any(text::contains)) add("palm / hydrogenated fat")
-        if (listOf("aspartame", "sucralose", "acesulfame", "e951", "e955", "e950").any(text::contains)) add("sweeteners")
-        if (listOf("sugar", "glucose syrup", "fructose").any(text::contains)) add("added sugars")
+    private fun riskPhrase(risk: RiskLevel): String = when (risk) {
+        RiskLevel.GENERALLY_OK -> "generally okay at normal dietary levels"
+        RiskLevel.WORTH_KNOWING -> "worth knowing about, rather than automatically avoiding"
+        RiskLevel.LIMIT -> "something I'd pay closer attention to, especially if eaten frequently"
+        RiskLevel.POTENTIAL_CONCERN -> "something that deserves a closer look before making a judgement"
     }
 }
