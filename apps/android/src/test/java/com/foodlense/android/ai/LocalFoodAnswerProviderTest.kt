@@ -12,13 +12,14 @@ class LocalFoodAnswerProviderTest {
         val answer = provider.answer("Sugar, E621, salt", "Is E621 bad?")
         assertContains(answer, "E621")
         assertContains(answer, "MSG")
+        assertContains(answer, "generally considered safe")
     }
 
     @Test
     fun dailyQuestionUsesFrequencyContext() = runBlocking {
         val answer = provider.answer("Sugar, palm oil", "Can I eat this every day?")
-        assertContains(answer, "everyday")
-        assertContains(answer, "nutrition")
+        assertContains(answer, "everyday food")
+        assertContains(answer, "nutrition picture")
     }
 
     @Test
@@ -31,6 +32,7 @@ class LocalFoodAnswerProviderTest {
     fun unknownQuestionStaysGroundedInScannedText() = runBlocking {
         val answer = provider.answer("Sugar, palm oil", "Tell me something interesting")
         assertContains(answer, "added sugars")
+        assertContains(answer, "palm / palmolein oil")
     }
 
     @Test
@@ -44,5 +46,6 @@ class LocalFoodAnswerProviderTest {
     fun unknownLabelDoesNotInventAnIngredient() = runBlocking {
         val answer = provider.answer("Water, wheat flour", "Is this healthy?")
         assertContains(answer, "don't have enough recognized ingredients")
+        assertContains(answer, "nutrition panel")
     }
 }
