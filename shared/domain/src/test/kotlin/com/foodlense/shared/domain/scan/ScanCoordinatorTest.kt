@@ -25,10 +25,10 @@ class ScanCoordinatorTest {
 
         assertEquals(ScanSource.BARCODE, result?.source)
         assertEquals("8901234567890", (result?.payload as ScanPayload.Barcode).rawValue)
-        assertEquals(BarcodeFormat.EAN_13, (result.payload as ScanPayload.Barcode).format)
-        assertNull(result.confidence)
-        assertEquals("scan-1", result.id)
-        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), result.capturedAt)
+        assertEquals(BarcodeFormat.EAN_13, (result?.payload as ScanPayload.Barcode).format)
+        assertNull(result?.confidence)
+        assertEquals("scan-1", result?.id)
+        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), result?.capturedAt)
     }
 
     @Test
@@ -55,7 +55,7 @@ class ScanCoordinatorTest {
 
         assertEquals(ScanSource.OCR, result?.source)
         assertEquals("Nutrition Facts", (result?.payload as ScanPayload.Text).value)
-        assertEquals(0.81f, result.confidence)
+        assertEquals(0.81f, result?.confidence)
     }
 
     @Test
