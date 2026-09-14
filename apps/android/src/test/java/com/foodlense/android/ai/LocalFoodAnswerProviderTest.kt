@@ -32,4 +32,17 @@ class LocalFoodAnswerProviderTest {
         val answer = provider.answer("Sugar, palm oil", "Tell me something interesting")
         assertContains(answer, "added sugars")
     }
+
+    @Test
+    fun recognizesIndianInsAlias() = runBlocking {
+        val answer = provider.answer("Wheat flour, INS 621, salt", "Is this ingredient safe?")
+        assertContains(answer, "E621")
+        assertContains(answer, "generally okay")
+    }
+
+    @Test
+    fun unknownLabelDoesNotInventAnIngredient() = runBlocking {
+        val answer = provider.answer("Water, wheat flour", "Is this healthy?")
+        assertContains(answer, "don't have enough recognized ingredients")
+    }
 }
