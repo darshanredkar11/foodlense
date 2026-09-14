@@ -1,31 +1,34 @@
 package com.foodlense.android.scan
 
-import androidx.camera.core.ImageProxy
 import com.foodlense.shared.contracts.scan.BarcodeDetection
 import com.foodlense.shared.contracts.scan.BarcodeScanner
+import com.foodlense.shared.contracts.scan.ImageFormat
 import com.foodlense.shared.contracts.scan.ScanFrame
 import com.foodlense.shared.domain.scan.BarcodeFormat
+import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-/** Android ML Kit adapter. The shared coordinator remains unaware of ML Kit. */
+/** Android adapter around ML Kit barcode recognition. */
 class MlKitBarcodeScanner : BarcodeScanner {
     private val scanner = BarcodeScanning.getClient(
         BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
-                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8,
-                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13,
-                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A,
-                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E,
-                com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128,
+                Barcode.FORMAT_EAN_8,
+                Barcode.FORMAT_EAN_13,
+                Barcode.FORMAT_UPC_A,
+                Barcode.FORMAT_UPC_E,
+                Barcode.FORMAT_CODE_128,
             )
             .build(),
     )
 
     override suspend fun scan(frame: ScanFrame): BarcodeDetection? {
+        if (frame.format != ImageFormat.YUV_420_888 || frame.bytes.isEmpty()) return null
+
         val image = InputImage.fromByteArray(
             frame.bytes,
             frame.width,
@@ -37,24 +40,30 @@ class MlKitBarcodeScanner : BarcodeScanner {
         return suspendCancellableCoroutine { continuation ->
             scanner.process(image)
                 .addOnSuccessListener { barcodes ->
-                    val barcode = barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }
-                    continuation.resume(barcode?.let {
-                        BarcodeDetection(
-                            rawValue = it.rawValue!!,
-                            format = it.format.toDomainFormat(),
-                        )
-                    })
+                    if (!continuation.isActive) return@addOnSuccessListener
+                    continuation.resume(
+                        barcodes.firstOrNull { !it.rawValue.isNullOrBlank() }?.let { barcode ->
+                            BarcodeDetection(
+                                rawValue = barcode.rawValue.orEmpty(),
+                                format = barcode.format.toDomainFormat(),
+                            )
+                        },
+                    )
                 }
-                .addOnFailureListener { continuation.resume(null) }
+                .addOnFailureListener {
+                    if (continuation.isActive) continuation.resume(null)
+                }
         }
     }
 
     private fun Int.toDomainFormat(): BarcodeFormat = when (this) {
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8 -> BarcodeFormat.EAN_8
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13 -> BarcodeFormat.EAN_13
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A -> BarcodeFormat.UPC_A
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E -> BarcodeFormat.UPC_E
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128 -> BarcodeFormat.CODE_128
+        Barcode.FORMAT_EAN_8 -> BarcodeFormat.EAN_8
+        Barcode.FORMAT_EAN_13 -> BarcodeFormat.EAN_13
+        Barcode.FORMAT_UPC_A -> BarcodeFormat.UPC_A
+        Barcode.FORMAT_UPC_E -> BarcodeFormat.UPC_E
+        Barcode.FORMAT_CODE_128 -> BarcodeFormat.CODE_128
+        Barcode.FORMAT_QR_CODE -> BarcodeFormat.QR_CODE
+        Barcode.FORMAT_DATA_MATRIX -> BarcodeFormat.DATA_MATRIX
         else -> BarcodeFormat.UNKNOWN
     }
 }
