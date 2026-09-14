@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,15 +14,17 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -62,16 +65,10 @@ fun FoodLenseApp() {
     when (screen) {
         Screen.HOME -> HomeScreen(onScan = { screen = Screen.CAMERA })
         Screen.CAMERA -> IngredientCamera(
-            onResult = {
-                scanResult = it
-                screen = Screen.RESULT
-            },
+            onResult = { scanResult = it; screen = Screen.RESULT },
             onClose = { screen = Screen.HOME },
         )
-        Screen.RESULT -> ResultScreen(
-            result = scanResult,
-            onScanAgain = { screen = Screen.CAMERA },
-        )
+        Screen.RESULT -> ResultScreen(result = scanResult, onScanAgain = { screen = Screen.CAMERA })
     }
 }
 
@@ -79,127 +76,105 @@ fun FoodLenseApp() {
 private fun HomeScreen(onScan: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+            modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 18.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primary),
+                    Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center,
-                ) { Text("F", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) }
-                Spacer(Modifier.size(12.dp))
-                Text("FoodLense", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                ) { Text("F", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge) }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("FoodLense", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Food, decoded.", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.weight(1f))
+                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text("PRIVATE", modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
             }
 
             Spacer(Modifier.weight(1f))
+            Text("Know what's", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+            Text("really in your food.", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(14.dp))
             Text(
-                "Know what's\nreally in your food.",
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Take a photo of the ingredients.\nI'll read them and explain what matters — simply.",
+                "Point your camera at any packaged food. I'll read the label and tell you what actually matters — without the fearmongering.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
 
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            ) {
-                Column(Modifier.padding(20.dp)) {
-                    Text("What you'll get", fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(14.dp))
-                    InsightRow("🔎", "Ingredients decoded")
-                    InsightRow("⚠️", "Potential concerns called out")
-                    InsightRow("💬", "A conversation, not a lecture")
+            Card(shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Column(Modifier.padding(19.dp)) {
+                    Text("Your quick food check", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(12.dp))
+                    InsightRow("01", "Ingredients decoded")
+                    InsightRow("02", "Things worth knowing highlighted")
+                    InsightRow("03", "A simple answer you can actually use")
                 }
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
             Button(
                 onClick = onScan,
-                modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(18.dp),
-            ) { Text("📷  Take a photo", style = MaterialTheme.typography.titleMedium) }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Your photo stays on your device for this demo.",
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(10.dp))
+                modifier = Modifier.fillMaxWidth().height(60.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            ) { Text("📷  Scan a food", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            Spacer(Modifier.height(9.dp))
+            Text("Nothing is uploaded in this demo.", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun InsightRow(icon: String, text: String) {
+private fun InsightRow(number: String, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-        Text(icon, modifier = Modifier.widthCompat(28.dp))
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.background, modifier = Modifier.size(28.dp)) {
+            Box(contentAlignment = Alignment.Center) { Text(number, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
+        }
+        Spacer(Modifier.width(11.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
-private fun Modifier.widthCompat(width: Int): Modifier = this.then(Modifier.size(width.dp, 24.dp))
-
 @Composable
 private fun IngredientCamera(onResult: (ScanResult) -> Unit, onClose: () -> Unit) {
     val analyzer = remember {
-        CameraAnalyzer(
-            barcodeScanner = MlKitBarcodeScanner(),
-            textScanner = MlKitTextScanner(),
-            onResult = onResult,
-        )
+        CameraAnalyzer(MlKitBarcodeScanner(), MlKitTextScanner(), onResult)
     }
     DisposableEffect(Unit) { onDispose { analyzer.close() } }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         CameraPreview(analyzer = analyzer)
-        Column(
-            modifier = Modifier.fillMaxSize().statusBarsPadding().padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) {
-                    Text("×", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Surface(shape = CircleShape, color = Color.Black.copy(alpha = .48f)) {
+                    IconButton(onClick = onClose) { Text("×", color = Color.White, style = MaterialTheme.typography.headlineMedium) }
                 }
                 Spacer(Modifier.weight(1f))
                 Surface(shape = RoundedCornerShape(50), color = Color.Black.copy(alpha = .55f)) {
                     Text("INGREDIENTS", color = Color.White, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
-            Spacer(Modifier.height(24.dp))
-            Surface(shape = RoundedCornerShape(18.dp), color = Color.Black.copy(alpha = .55f)) {
-                Text(
-                    "Point at the ingredients list\nand hold steady",
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
-                    textAlign = TextAlign.Center,
-                )
+            Spacer(Modifier.height(28.dp))
+            Surface(shape = RoundedCornerShape(20.dp), color = Color.Black.copy(alpha = .52f)) {
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 13.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Find the ingredients list", color = Color.White, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(3.dp))
+                    Text("Hold steady for a moment", color = Color.White.copy(alpha = .82f), style = MaterialTheme.typography.bodySmall)
+                }
             }
             Spacer(Modifier.weight(1f))
-            Text("Reading the label…", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(14.dp))
-            Box(
-                modifier = Modifier
-                    .size(76.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = .95f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(Modifier.size(62.dp).clip(CircleShape).background(Color.Black.copy(alpha = .08f)))
-            }
+            Text("Reading the label…", color = Color.White, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(modifier = Modifier.width(150.dp).clip(CircleShape), color = Color.White, trackColor = Color.White.copy(alpha = .25f))
             Spacer(Modifier.height(18.dp))
+            Box(Modifier.size(82.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(68.dp).clip(CircleShape).background(Color.Black.copy(alpha = .08f)))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Auto-detect is on", color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -209,28 +184,23 @@ private fun ResultScreen(result: ScanResult?, onScanAgain: () -> Unit) {
     val detectedText = remember(result) { extractText(result) }
     val analysis = remember(detectedText) { analyzeIngredients(detectedText) }
     val answerProvider = remember { LocalFoodAnswerProvider() }
-    val messages = remember(analysis) {
-        mutableStateListOf(
-            ChatMessage(false, analysis.opening),
-        )
-    }
+    val messages = remember(analysis) { mutableStateListOf(ChatMessage(false, analysis.opening)) }
     var question by remember { mutableStateOf("") }
     var thinking by remember { mutableStateOf(false) }
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(11.dp)).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) { Text("F", color = Color.White, fontWeight = FontWeight.Black) }
+                Spacer(Modifier.width(10.dp))
                 Text("FoodLense", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onScanAgain) { Text("Scan again") }
             }
 
             LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
@@ -240,16 +210,16 @@ private fun ResultScreen(result: ScanResult?, onScanAgain: () -> Unit) {
                 }
                 item { IngredientCard(analysis) }
                 item {
-                    Text("Ask me anything", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                        Text("💡  Tip: ask me about an ingredient, or ask whether you'd eat this every day.", modifier = Modifier.padding(13.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
                 }
-                items(messages) { message -> ChatBubble(message) }
-                if (thinking) item { ChatBubble(ChatMessage(false, "Give me a second… 👀")) }
+                item { Text("Ask me anything", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+                items(messages) { ChatBubble(it) }
+                if (thinking) item { ChatBubble(ChatMessage(false, "Let me check that against the label… 👀")) }
             }
 
-            Row(
-                Modifier.fillMaxWidth().padding(12.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom) {
                 OutlinedTextField(
                     value = question,
                     onValueChange = { question = it },
@@ -258,24 +228,22 @@ private fun ResultScreen(result: ScanResult?, onScanAgain: () -> Unit) {
                     shape = RoundedCornerShape(22.dp),
                     maxLines = 3,
                 )
-                Spacer(Modifier.size(8.dp))
+                Spacer(Modifier.width(8.dp))
                 IconButton(
                     onClick = {
                         val q = question.trim()
                         if (q.isEmpty() || thinking) return@IconButton
-                        messages.add(ChatMessage(true, q))
-                        question = ""
-                        thinking = true
+                        messages.add(ChatMessage(true, q)); question = ""; thinking = true
                     },
                     modifier = Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                ) { Text("↑", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleLarge) }
+                ) { Text("↑", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             }
         }
     }
 
     LaunchedEffect(thinking) {
         if (thinking) {
-            delay(650)
+            delay(500)
             val latestQuestion = messages.lastOrNull { it.fromUser }?.text.orEmpty()
             messages.add(ChatMessage(false, answerProvider.answer(detectedText, latestQuestion)))
             thinking = false
@@ -285,18 +253,23 @@ private fun ResultScreen(result: ScanResult?, onScanAgain: () -> Unit) {
 
 @Composable
 private fun IngredientCard(analysis: IngredientAnalysis) {
-    Card(shape = RoundedCornerShape(24.dp)) {
-        Column(Modifier.padding(20.dp)) {
-            Text(analysis.verdict, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
+    Card(shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.padding(19.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(46.dp)) {
+                    Box(contentAlignment = Alignment.Center) { Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge) }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(analysis.verdict, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Based on what I could read", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.height(13.dp))
             Text(analysis.summary, style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             analysis.flags.forEach { flag ->
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = flag.background,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                ) {
+                Surface(shape = RoundedCornerShape(18.dp), color = flag.background, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Column(Modifier.padding(14.dp)) {
                         Text(flag.title, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(3.dp))
@@ -305,9 +278,9 @@ private fun IngredientCard(analysis: IngredientAnalysis) {
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Text("Ingredients read", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("LABEL TEXT", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
-            Text(analysis.ingredients, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(analysis.ingredients, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 5)
         }
     }
 }
@@ -319,23 +292,13 @@ private fun ChatBubble(message: ChatMessage) {
             shape = RoundedCornerShape(20.dp),
             color = if (message.fromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
         ) {
-            Text(
-                message.text,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                color = if (message.fromUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(message.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), color = if (message.fromUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 private data class Flag(val title: String, val detail: String, val background: Color)
-private data class IngredientAnalysis(
-    val verdict: String,
-    val summary: String,
-    val opening: String,
-    val ingredients: String,
-    val flags: List<Flag>,
-)
+private data class IngredientAnalysis(val verdict: String, val summary: String, val opening: String, val ingredients: String, val flags: List<Flag>)
 
 private fun extractText(result: ScanResult?): String = when (val payload = result?.payload) {
     is ScanPayload.Text -> payload.value
@@ -346,18 +309,10 @@ private fun extractText(result: ScanResult?): String = when (val payload = resul
 private fun analyzeIngredients(text: String): IngredientAnalysis {
     val normalized = text.lowercase()
     val flags = mutableListOf<Flag>()
-    if (listOf("e621", "monosodium glutamate", "msg").any(normalized::contains)) {
-        flags += Flag("E621 · MSG", "Generally considered safe at normal dietary levels. If you eat this product often, the bigger question is the overall food and sodium load.", Color(0xFFFFF1D6))
-    }
-    if (listOf("palmolein", "palm oil", "hydrogenated", "partially hydrogenated").any(normalized::contains)) {
-        flags += Flag("Palm / hydrogenated fat", "Worth knowing rather than panicking about. Frequency and the rest of your diet matter more than one ingredient in isolation.", Color(0xFFFFE4E1))
-    }
-    if (listOf("aspartame", "sucralose", "acesulfame", "e951", "e955", "e950").any(normalized::contains)) {
-        flags += Flag("Sweeteners detected", "These are regulated food additives, but people can have different preferences or sensitivities. I wouldn't call them automatically harmful.", Color(0xFFE9F4FF))
-    }
-    if (flags.isEmpty()) {
-        flags += Flag("No obvious red flags", "I didn't spot a common additive that I'd immediately call a concern from the text I could read. That isn't the same as saying the whole product is healthy.", Color(0xFFE8F6EA))
-    }
+    if (listOf("e621", "monosodium glutamate", "msg").any(normalized::contains)) flags += Flag("E621 · MSG", "Generally considered safe at normal dietary levels. If you eat this often, the bigger question is the overall food and sodium load.", Color(0xFFFFF1D6))
+    if (listOf("palmolein", "palm oil", "hydrogenated", "partially hydrogenated").any(normalized::contains)) flags += Flag("Palm / hydrogenated fat", "Worth knowing rather than panicking about. Frequency and the rest of your diet matter more than one ingredient alone.", Color(0xFFFFE4E1))
+    if (listOf("aspartame", "sucralose", "acesulfame", "e951", "e955", "e950").any(normalized::contains)) flags += Flag("Sweeteners detected", "These are regulated food additives, but people can have different preferences or sensitivities. I wouldn't call them automatically harmful.", Color(0xFFE9F4FF))
+    if (flags.isEmpty()) flags += Flag("No obvious red flags", "I didn't spot a common additive that I'd immediately call a concern from the text I could read. That isn't the same as saying the whole product is healthy.", Color(0xFFE8F6EA))
     val verdict = when {
         flags.any { it.title.startsWith("E621") } -> "A few things worth knowing 👀"
         flags.any { it.title.startsWith("Palm") } -> "Worth a closer look 🧐"
