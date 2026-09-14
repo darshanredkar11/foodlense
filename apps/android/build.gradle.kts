@@ -16,6 +16,13 @@ android {
         versionName = "0.1.0"
     }
 
+    // The demo APK targets modern physical Android phones. Keeping emulator and
+    // legacy ARM native binaries out of the debug APK avoids shipping ~40+ MB
+    // of ML Kit native code that the demo device cannot use.
+    ndk {
+        abiFilters += setOf("arm64-v8a")
+    }
+
     buildFeatures { compose = true }
 
     compileOptions {
