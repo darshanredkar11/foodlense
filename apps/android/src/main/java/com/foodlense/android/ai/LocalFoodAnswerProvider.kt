@@ -31,7 +31,7 @@ class LocalFoodAnswerProvider(
                 if (first != null) {
                     "I wouldn't call the whole product harmful from this label alone. ${first.name} is ${riskPhrase(first.risk)}. The full nutrition panel and how often you eat it matter too."
                 } else {
-                    "I can't make a reliable health judgement from the text I could read yet. The nutrition panel plus the complete ingredient list would give us much more context."
+                    "I don't have enough recognized ingredients from this scan to make a reliable health judgement yet. The nutrition panel plus the complete ingredient list would give us much more context."
                 }
             q.contains("ingredient") || q.contains("what is") || q.contains("what's") ->
                 "I can explain individual ingredients one by one. Pick the name that caught your eye and I'll translate the food-science language into plain English."
