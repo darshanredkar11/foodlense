@@ -13,7 +13,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 /** Android adapter around ML Kit barcode recognition. */
-class MlKitBarcodeScanner : BarcodeScanner {
+class MlKitBarcodeScanner : BarcodeScanner, AutoCloseable {
     private val scanner = BarcodeScanning.getClient(
         BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
@@ -54,6 +54,10 @@ class MlKitBarcodeScanner : BarcodeScanner {
                     if (continuation.isActive) continuation.resume(null)
                 }
         }
+    }
+
+    override fun close() {
+        scanner.close()
     }
 
     private fun Int.toDomainFormat(): BarcodeFormat = when (this) {
