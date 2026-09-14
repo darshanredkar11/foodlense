@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.foodlense.android.ai.LocalFoodAnswerProvider
 import com.foodlense.android.camera.CameraAnalyzer
 import com.foodlense.android.camera.CameraPreview
 import com.foodlense.android.scan.MlKitBarcodeScanner
@@ -206,6 +208,7 @@ private fun IngredientCamera(onResult: (ScanResult) -> Unit, onClose: () -> Unit
 private fun ResultScreen(result: ScanResult?, onScanAgain: () -> Unit) {
     val detectedText = remember(result) { extractText(result) }
     val analysis = remember(detectedText) { analyzeIngredients(detectedText) }
+    val answerProvider = remember { LocalFoodAnswerProvider() }
     val messages = remember(analysis) {
         mutableStateListOf(
             ChatMessage(false, analysis.opening),
@@ -227,7 +230,7 @@ private fun ResultScreen(result: ScanResult?, onScanAgain: () -> Unit) {
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
@@ -273,7 +276,8 @@ private fun ResultScreen(result: ScanResult?, onScanAgain: () -> Unit) {
     LaunchedEffect(thinking) {
         if (thinking) {
             delay(650)
-            messages.add(ChatMessage(false, conversationalAnswer(messages.lastOrNull()?.text.orEmpty(), analysis)))
+            val latestQuestion = messages.lastOrNull { it.fromUser }?.text.orEmpty()
+            messages.add(ChatMessage(false, answerProvider.answer(detectedText, latestQuestion)))
             thinking = false
         }
     }
@@ -361,14 +365,4 @@ private fun analyzeIngredients(text: String): IngredientAnalysis {
     }
     val summary = "I read the label and found ${flags.size} thing${if (flags.size == 1) "" else "s"} worth talking about."
     return IngredientAnalysis(verdict, summary, "$verdict\n\n$summary Ask me about any ingredient and I'll break it down without the chemistry lecture.", text.ifBlank { "No readable ingredient text yet." }, flags)
-}
-
-private fun conversationalAnswer(question: String, analysis: IngredientAnalysis): String {
-    val q = question.lowercase()
-    return when {
-        "bad" in q || "harm" in q || "safe" in q -> "I wouldn't label the whole product as harmful from this ingredient list alone. ${analysis.flags.first().title} is something to understand, not automatically fear. If this is an everyday food, I'd look at the full nutrition panel and how often you eat it."
-        "daily" in q || "every day" in q -> "If you're having this every day, I'd zoom out from individual additives and check sugar, sodium, saturated fat, protein and fibre too. Frequency changes the picture."
-        "msg" in q || "e621" in q -> "E621 (MSG) is generally considered safe at normal dietary levels. The internet often makes this sound scarier than the evidence does."
-        else -> "Good question. Based on what I could read, I'd treat ${analysis.flags.first().title} as something to understand rather than a reason to panic. If you tell me what you're worried about, I can go deeper."
-    }
 }
