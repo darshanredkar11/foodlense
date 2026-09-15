@@ -3,6 +3,7 @@ package com.foodlense.android.ai
 /** Offline answer engine. It uses structured ingredient knowledge but never equates a match with "harmful". */
 class LocalFoodAnswerProvider(
     private val knowledge: IngredientKnowledgeBase = IngredientKnowledgeBase(),
+    private val explainer: IngredientExplainer = IngredientExplainer(knowledge),
 ) : FoodAnswerProvider {
     override suspend fun answer(ingredients: String, question: String): String {
         val q = question.trim().lowercase()
@@ -11,6 +12,7 @@ class LocalFoodAnswerProvider(
 
         return when {
             q.isBlank() -> "Tell me what you're wondering about and I'll break it down from the label."
+            isExplainAllRequest(q) -> explainer.explainAll(ingredients)
             q.contains("msg") || q.contains("e621") -> {
                 val msg = insights.firstOrNull { it.key == "e621" }
                 msg?.let {
@@ -34,7 +36,7 @@ class LocalFoodAnswerProvider(
                     "I don't have enough recognized ingredients from this scan to make a reliable health judgement yet. The nutrition panel plus the complete ingredient list would give us much more context."
                 }
             q.contains("ingredient") || q.contains("what is") || q.contains("what's") ->
-                "I can explain individual ingredients one by one. Pick the name that caught your eye and I'll translate the food-science language into plain English."
+                "I can explain individual ingredients one by one. Or ask me to explain all ingredients and I'll go through the complete list."
             else ->
                 if (first != null) {
                     "Good question. From the label I could read, ${first.name.lowercase()} stands out. It's ${first.category.lowercase()}; ${first.explanation.lowercase()}"
@@ -42,6 +44,15 @@ class LocalFoodAnswerProvider(
                     "Good question. I don't have enough recognized ingredients from this scan yet. Try holding the camera closer to the ingredients list."
                 }
         }
+    }
+
+    private fun isExplainAllRequest(question: String): Boolean {
+        val allWords = listOf("all", "every", "each", "whole", "complete", "entire")
+        val explainWords = listOf("explain", "break down", "describe", "tell me", "what are")
+        val ingredientWords = listOf("ingredient", "ingredients", "label", "list")
+        return allWords.any(question::contains) &&
+            explainWords.any(question::contains) &&
+            ingredientWords.any(question::contains)
     }
 
     private fun riskPhrase(risk: RiskLevel): String = when (risk) {
