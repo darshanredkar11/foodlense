@@ -2,6 +2,7 @@ package com.foodlense.android.ai
 
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertFalse
 import kotlinx.coroutines.runBlocking
 
 class LocalFoodAnswerProviderTest {
@@ -52,5 +53,30 @@ class LocalFoodAnswerProviderTest {
         val answer = provider.answer("Water, wheat flour", "Is this healthy?")
         assertContains(answer, "don't have enough recognized ingredients")
         assertContains(answer, "nutrition panel")
+    }
+
+    @Test
+    fun explainAllQuestionReturnsEveryParsedIngredient() = runBlocking {
+        val answer = provider.answer(
+            "Ingredients: sugar, wheat flour, palm oil, E322, potassium sorbate",
+            "Explain all ingredients",
+        )
+        assertContains(answer, "1. sugar")
+        assertContains(answer, "2. wheat flour")
+        assertContains(answer, "3. palm oil")
+        assertContains(answer, "4. E322")
+        assertContains(answer, "5. potassium sorbate")
+        assertContains(answer, "Added sugars")
+        assertContains(answer, "E322 · Lecithin")
+    }
+
+    @Test
+    fun explainEveryIngredientDoesNotAskUserToPickOne() = runBlocking {
+        val answer = provider.answer(
+            "Ingredients: sugar, wheat flour, palm oil",
+            "Can you explain every ingredient in this list?",
+        )
+        assertFalse(answer.contains("Pick the name that caught your eye"))
+        assertContains(answer, "whole ingredient list")
     }
 }
